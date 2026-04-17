@@ -44,7 +44,9 @@ nftables/
 ### Способ 1: Через curl (рекомендуется)
 
 ```bash
-curl -s https://raw.githubusercontent.com/xuserz/nftables/main/install.sh | sudo bash
+curl -O https://raw.githubusercontent.com/xuserz/nftables/main/install.sh
+chmod +x install.sh
+sudo ./install.sh
 ```
 
 ### Способ 2: Скачать и запустить
