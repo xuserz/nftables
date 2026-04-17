@@ -40,7 +40,7 @@ fi
 GIT_REPO="https://github.com/xuserz/nftables.git"
 
 # Временная папка
-TEMP_DIR="/tmp/nftables-install"
+TEMP_DIR="/tmp/nftables"
 
 echo "============================================================"
 echo "    Установка nftables с блокировкой Сервисов"
