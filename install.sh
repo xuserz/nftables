@@ -82,58 +82,17 @@ print_info "Клонируем репозиторий с GitHub..."
 rm -rf "$TEMP_DIR"
 git clone --depth 1 "$GIT_REPO" "$TEMP_DIR"
 
-# Показываем структуру репозитория
-print_info "Структура репозитория:"
-ls -la "$TEMP_DIR/"
-echo ""
+# Удаляем старую папку /etc/nftables и копируем новую
+print_info "Удаляем старую конфигурацию..."
+rm -rf /etc/nftables
 
-# Создаём структуру каталогов
-print_info "Создаём структуру каталогов /etc/nftables..."
-mkdir -p /etc/nftables
+print_info "Копируем новую конфигурацию..."
+cp -r "$TEMP_DIR" /etc/nftables
 
-# Копируем main.conf (если есть)
-if [ -f "$TEMP_DIR/main.conf" ]; then
-    cp "$TEMP_DIR/main.conf" /etc/nftables/
-    print_success "Скопирован main.conf"
-else
-    print_error "main.conf не найден в репозитории"
-    exit 1
-fi
+# Удаляем временную папку
+rm -rf "$TEMP_DIR"
 
-# Копируем blocklists (если есть папка)
-if [ -d "$TEMP_DIR/blocklists" ]; then
-    cp -r "$TEMP_DIR/blocklists" /etc/nftables/
-    print_success "Скопирована папка blocklists"
-else
-    print_warning "Папка blocklists не найдена, создаём пустую"
-    mkdir -p /etc/nftables/blocklists
-fi
-
-# Копируем rules (если есть папка)
-if [ -d "$TEMP_DIR/rules" ]; then
-    cp -r "$TEMP_DIR/rules" /etc/nftables/
-    print_success "Скопирована папка rules"
-else
-    print_warning "Папка rules не найдена, создаём пустую"
-    mkdir -p /etc/nftables/rules
-fi
-
-# Если файлы лежат прямо в корне репозитория (без папок)
-if [ -f "$TEMP_DIR/ipv4.nft" ]; then
-    mkdir -p /etc/nftables/blocklists
-    cp "$TEMP_DIR/ipv4.nft" /etc/nftables/blocklists/
-    cp "$TEMP_DIR/ipv6.nft" /etc/nftables/blocklists/ 2>/dev/null || true
-    print_success "Скопированы блоклисты из корня"
-fi
-
-if [ -f "$TEMP_DIR/input.nft" ]; then
-    mkdir -p /etc/nftables/rules
-    cp "$TEMP_DIR/input.nft" /etc/nftables/rules/
-    cp "$TEMP_DIR/output.nft" /etc/nftables/rules/ 2>/dev/null || true
-    print_success "Скопированы правила из корня"
-fi
-
-# Создаём variables.conf
+# Создаём variables.conf с портами от пользователя
 print_info "Создаём variables.conf с твоими портами..."
 
 cat > /etc/nftables/variables.conf << EOF
@@ -174,9 +133,6 @@ nft -f /etc/nftables/main.conf
 # Включаем автозагрузку
 systemctl enable nftables
 systemctl restart nftables
-
-# Удаляем временную папку
-rm -rf "$TEMP_DIR"
 
 # Итог
 echo ""
