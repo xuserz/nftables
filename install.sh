@@ -26,33 +26,53 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
 # Проверка прав root
 if [[ $EUID -ne 0 ]]; then
     print_error "Запусти с sudo: sudo $0"
     exit 1
 fi
 
-# GitHub репозиторий (ИЗМЕНИ НА СВОЙ!)
+# GitHub репозиторий
 GIT_REPO="https://raw.githubusercontent.com/xuserz/nftables/main"
 
-# Запрос портов
-clear
 echo "============================================================"
-echo "    Установка nftables с блокировкой VK"
+echo "    Установка nftables с блокировкой Сервисов"
 echo "============================================================"
 echo ""
 
+# Запрос TCP портов
 print_info "Какие TCP порты разрешить? (через пробел, например: 80 443 8080)"
-print_info "SSH (22) уже добавлен автоматически"
-read -p "TCP порты: " -a TCP_PORTS
+print_warning "SSH (22) уже добавлен автоматически"
+echo ""
+read -p "TCP порты: " TCP_PORTS_INPUT
 
+# Проверка что ввели
+if [ -z "$TCP_PORTS_INPUT" ]; then
+    print_error "Ты не ввёл ни одного TCP порта"
+    exit 1
+fi
+
+echo ""
+
+# Запрос UDP портов
 print_info "Какие UDP порты разрешить? (через пробел, например: 53 51820 42603)"
-read -p "UDP порты: " -a UDP_PORTS
+echo ""
+read -p "UDP порты: " UDP_PORTS_INPUT
+
+echo ""
+
+# Преобразуем строку в массив
+TCP_PORTS=($TCP_PORTS_INPUT)
+UDP_PORTS=($UDP_PORTS_INPUT)
 
 # Установка nftables
 print_info "Устанавливаем nftables..."
-apt update
-apt install -y nftables
+apt update -qq
+apt install -y nftables curl
 
 # Создание структуры
 print_info "Создаём структуру каталогов..."
@@ -61,19 +81,15 @@ mkdir -p /etc/nftables/{blocklists,rules}
 # Скачивание файлов с GitHub
 print_info "Скачиваем конфиги с GitHub..."
 
-# Скачиваем main.conf
 curl -s -o /etc/nftables/main.conf "$GIT_REPO/main.conf"
-
-# Скачиваем блоклисты
 curl -s -o /etc/nftables/blocklists/ipv4.nft "$GIT_REPO/blocklists/ipv4.nft"
 curl -s -o /etc/nftables/blocklists/ipv6.nft "$GIT_REPO/blocklists/ipv6.nft"
-
-# Скачиваем правила
 curl -s -o /etc/nftables/rules/input.nft "$GIT_REPO/rules/input.nft"
 curl -s -o /etc/nftables/rules/output.nft "$GIT_REPO/rules/output.nft"
 
-# Создаём variables.conf динамически (с портами от пользователя)
+# Создаём variables.conf
 print_info "Создаём variables.conf с твоими портами..."
+
 cat > /etc/nftables/variables.conf << EOF
 # ============================================================
 # ПЕРЕМЕННЫЕ
@@ -112,25 +128,36 @@ systemctl enable nftables
 systemctl restart nftables
 
 # Итог
-clear
-echo "============================================================"
-echo -e "${GREEN}УСТАНОВКА ЗАВЕРШЕНА!${NC}"
-echo "============================================================"
-echo ""
-echo -e "${BLUE}Разрешённые TCP порты:${NC} ${TCP_PORTS[*]}"
-echo -e "${BLUE}Разрешённые UDP порты:${NC} ${UDP_PORTS[*]}"
-echo -e "${GREEN}SSH (22) всегда открыт${NC}"
-echo ""
-echo -e "${YELLOW}Заблокированы: VK${NC}"
 echo ""
 echo "============================================================"
-echo -e "${BLUE}Команды:${NC}"
-echo "  sudo nft list ruleset          # просмотр правил"
-echo "  sudo nft -f /etc/nftables/main.conf  # применить изменения"
+print_success "УСТАНОВКА ЗАВЕРШЕНА!"
 echo "============================================================"
+echo ""
+echo -e "${BLUE}Разрешённые TCP порты:${NC}"
+for port in "${TCP_PORTS[@]}"; do
+    echo "  ✅ tcp/$port"
+done
+echo ""
+echo -e "${BLUE}Разрешённые UDP порты:${NC}"
+for port in "${UDP_PORTS[@]}"; do
+    echo "  ✅ udp/$port"
+done
+echo ""
+echo -e "${GREEN}🔒 SSH (порт 22) всегда открыт${NC}"
+echo ""
+echo "============================================================"
+echo -e "${BLUE}Полезные команды:${NC}"
+echo "  sudo nft list ruleset                      # просмотр правил"
+echo "  sudo nft -f /etc/nftables/main.conf        # применить изменения"
+echo "  sudo systemctl status nftables             # статус сервиса"
+echo "============================================================"
+echo ""
 
-read -p "Перезагрузить? (y/n): " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+# Предложение перезагрузить
+read -p "Перезагрузить сервер? (y/n): " REBOOT_ANSWER
+if [[ "$REBOOT_ANSWER" =~ ^[Yy]$ ]]; then
+    print_info "Перезагрузка..."
     reboot
+else
+    print_info "Перезагрузка отменена"
 fi
