@@ -37,7 +37,10 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # GitHub репозиторий
-GIT_REPO="https://raw.githubusercontent.com/xuserz/nftables/main"
+GIT_REPO="https://github.com/xuserz/nftables.git"
+
+# Временная папка
+TEMP_DIR="/tmp/nftables-install"
 
 echo "============================================================"
 echo "    Установка nftables с блокировкой Сервисов"
@@ -69,25 +72,27 @@ echo ""
 TCP_PORTS=($TCP_PORTS_INPUT)
 UDP_PORTS=($UDP_PORTS_INPUT)
 
-# Установка nftables
-print_info "Устанавливаем nftables..."
+# Установка git и nftables
+print_info "Устанавливаем пакеты..."
 apt update -qq
-apt install -y nftables curl
+apt install -y nftables curl git
 
-# Создание структуры
-print_info "Создаём структуру каталогов..."
-mkdir -p /etc/nftables/{blocklists,rules}
+# Клонируем репозиторий
+print_info "Клонируем репозиторий с GitHub..."
+rm -rf "$TEMP_DIR"
+git clone --depth 1 "$GIT_REPO" "$TEMP_DIR"
 
-# Скачивание файлов с GitHub
-print_info "Скачиваем конфиги с GitHub..."
+# Копируем файлы
+print_info "Копируем конфиги..."
+mkdir -p /etc/nftables
+cp -r "$TEMP_DIR/blocklists" /etc/nftables/
+cp -r "$TEMP_DIR/rules" /etc/nftables/
+cp "$TEMP_DIR/main.conf" /etc/nftables/
 
-curl -s -o /etc/nftables/main.conf "$GIT_REPO/main.conf"
-curl -s -o /etc/nftables/blocklists/ipv4.nft "$GIT_REPO/blocklists/ipv4.nft"
-curl -s -o /etc/nftables/blocklists/ipv6.nft "$GIT_REPO/blocklists/ipv6.nft"
-curl -s -o /etc/nftables/rules/input.nft "$GIT_REPO/rules/input.nft"
-curl -s -o /etc/nftables/rules/output.nft "$GIT_REPO/rules/output.nft"
+# Удаляем временную папку
+rm -rf "$TEMP_DIR"
 
-# Создаём variables.conf
+# Создаём variables.conf с портами от пользователя
 print_info "Создаём variables.conf с твоими портами..."
 
 cat > /etc/nftables/variables.conf << EOF
@@ -144,6 +149,7 @@ for port in "${UDP_PORTS[@]}"; do
 done
 echo ""
 echo -e "${GREEN}🔒 SSH (порт 22) всегда открыт${NC}"
+echo -e "${RED}🚫 Заблокированы: VK, max.ru${NC}"
 echo ""
 echo "============================================================"
 echo -e "${BLUE}Полезные команды:${NC}"
