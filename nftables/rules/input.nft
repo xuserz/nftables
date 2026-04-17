@@ -1,0 +1,26 @@
+chain input {
+  type filter hook input priority 0; policy drop;
+
+  iif "lo" accept
+  ct state { established, related } accept
+
+  # ICMP с лимитом
+  ip protocol icmp icmp type { echo-request, echo-reply, destination-unreachable, time-exceeded } limit rate 10/second accept
+
+  # ====================================================
+  # SSH — НАВСЕГДА ОТКРЫТ
+  # ====================================================
+  tcp dport 22 accept
+
+  # ====================================================
+  # Остальные порты
+  # ====================================================
+  tcp dport $ALLOWED_PORTS accept
+  udp dport $ALLOWED_PORTS accept
+
+  # ====================================================
+  # Блокировка
+  # ====================================================
+  ip saddr $block_ipv4 drop
+  ip6 saddr $block_ipv6 drop
+}

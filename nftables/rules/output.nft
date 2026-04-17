@@ -1,0 +1,7 @@
+chain output {
+  type filter hook output priority 0; policy accept;
+
+  # Блокировка исходящих с сервера
+  ip daddr $block_ipv4 drop
+  ip6 daddr $block_ipv6 drop
+}
