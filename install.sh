@@ -87,7 +87,7 @@ print_info "Удаляем старую конфигурацию..."
 rm -rf /etc/nftables
 
 print_info "Копируем новую конфигурацию..."
-cp -r "$TEMP_DIR" /etc/nftables
+cp -r "$TEMP_DIR" /etc
 
 # Удаляем временную папку
 rm -rf "$TEMP_DIR"
