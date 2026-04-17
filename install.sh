@@ -40,7 +40,7 @@ fi
 GIT_REPO="https://github.com/xuserz/nftables.git"
 
 # Временная папка
-TEMP_DIR="/tmp/nftables"
+TEMP_DIR="/tmp/nftables-install"
 
 echo "============================================================"
 echo "    Установка nftables с блокировкой Сервисов"
@@ -87,7 +87,7 @@ print_info "Удаляем старую конфигурацию..."
 rm -rf /etc/nftables
 
 print_info "Копируем новую конфигурацию..."
-cp -r "$TEMP_DIR" /etc
+cp -r "$TEMP_DIR/nftables" /etc
 
 # Удаляем временную папку
 rm -rf "$TEMP_DIR"
