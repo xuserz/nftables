@@ -72,7 +72,7 @@ echo ""
 TCP_PORTS=($TCP_PORTS_INPUT)
 UDP_PORTS=($UDP_PORTS_INPUT)
 
-# Установка git и nftables
+# Установка пакетов
 print_info "Устанавливаем пакеты..."
 apt update -qq
 apt install -y nftables curl git
@@ -82,17 +82,58 @@ print_info "Клонируем репозиторий с GitHub..."
 rm -rf "$TEMP_DIR"
 git clone --depth 1 "$GIT_REPO" "$TEMP_DIR"
 
-# Копируем файлы
-print_info "Копируем конфиги..."
+# Показываем структуру репозитория
+print_info "Структура репозитория:"
+ls -la "$TEMP_DIR/"
+echo ""
+
+# Создаём структуру каталогов
+print_info "Создаём структуру каталогов /etc/nftables..."
 mkdir -p /etc/nftables
-cp -r "$TEMP_DIR/blocklists" /etc/nftables/
-cp -r "$TEMP_DIR/rules" /etc/nftables/
-cp "$TEMP_DIR/main.conf" /etc/nftables/
 
-# Удаляем временную папку
-rm -rf "$TEMP_DIR"
+# Копируем main.conf (если есть)
+if [ -f "$TEMP_DIR/main.conf" ]; then
+    cp "$TEMP_DIR/main.conf" /etc/nftables/
+    print_success "Скопирован main.conf"
+else
+    print_error "main.conf не найден в репозитории"
+    exit 1
+fi
 
-# Создаём variables.conf с портами от пользователя
+# Копируем blocklists (если есть папка)
+if [ -d "$TEMP_DIR/blocklists" ]; then
+    cp -r "$TEMP_DIR/blocklists" /etc/nftables/
+    print_success "Скопирована папка blocklists"
+else
+    print_warning "Папка blocklists не найдена, создаём пустую"
+    mkdir -p /etc/nftables/blocklists
+fi
+
+# Копируем rules (если есть папка)
+if [ -d "$TEMP_DIR/rules" ]; then
+    cp -r "$TEMP_DIR/rules" /etc/nftables/
+    print_success "Скопирована папка rules"
+else
+    print_warning "Папка rules не найдена, создаём пустую"
+    mkdir -p /etc/nftables/rules
+fi
+
+# Если файлы лежат прямо в корне репозитория (без папок)
+if [ -f "$TEMP_DIR/ipv4.nft" ]; then
+    mkdir -p /etc/nftables/blocklists
+    cp "$TEMP_DIR/ipv4.nft" /etc/nftables/blocklists/
+    cp "$TEMP_DIR/ipv6.nft" /etc/nftables/blocklists/ 2>/dev/null || true
+    print_success "Скопированы блоклисты из корня"
+fi
+
+if [ -f "$TEMP_DIR/input.nft" ]; then
+    mkdir -p /etc/nftables/rules
+    cp "$TEMP_DIR/input.nft" /etc/nftables/rules/
+    cp "$TEMP_DIR/output.nft" /etc/nftables/rules/ 2>/dev/null || true
+    print_success "Скопированы правила из корня"
+fi
+
+# Создаём variables.conf
 print_info "Создаём variables.conf с твоими портами..."
 
 cat > /etc/nftables/variables.conf << EOF
@@ -115,6 +156,8 @@ done)
 }
 EOF
 
+print_success "variables.conf создан"
+
 # Проверка конфига
 print_info "Проверяем синтаксис..."
 if nft -c -f /etc/nftables/main.conf; then
@@ -131,6 +174,9 @@ nft -f /etc/nftables/main.conf
 # Включаем автозагрузку
 systemctl enable nftables
 systemctl restart nftables
+
+# Удаляем временную папку
+rm -rf "$TEMP_DIR"
 
 # Итог
 echo ""
@@ -149,7 +195,6 @@ for port in "${UDP_PORTS[@]}"; do
 done
 echo ""
 echo -e "${GREEN}🔒 SSH (порт 22) всегда открыт${NC}"
-echo -e "${RED}🚫 Заблокированы: VK, max.ru${NC}"
 echo ""
 echo "============================================================"
 echo -e "${BLUE}Полезные команды:${NC}"
