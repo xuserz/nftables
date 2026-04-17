@@ -15,8 +15,8 @@ chain input {
   # ====================================================
   # Остальные порты
   # ====================================================
-  tcp dport $ALLOWED_PORTS accept
-  udp dport $ALLOWED_PORTS accept
+  tcp dport $ALLOWED_TCP_PORTS accept
+  udp dport $ALLOWED_UDP_PORTS accept
 
   # ====================================================
   # Блокировка
