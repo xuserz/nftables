@@ -77,6 +77,25 @@ print_info "Устанавливаем пакеты..."
 apt update -qq
 apt install -y nftables curl git
 
+# ============================================================
+# БЭКАП СТАРОГО КОНФИГА
+# ============================================================
+
+if [ -f /etc/nftables.conf ] || [ -L /etc/nftables.conf ]; then
+    BACKUP_DATE=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_FILE="/etc/nftables.conf.bak_${BACKUP_DATE}"
+    
+    print_info "Создаём бэкап: $BACKUP_FILE"
+    cp -a /etc/nftables.conf "$BACKUP_FILE"
+    print_success "Бэкап создан: $BACKUP_FILE"
+else
+    print_info "Файл /etc/nftables.conf не существует, бэкап не требуется"
+fi
+
+# ============================================================
+# УСТАНОВКА НОВОГО КОНФИГА
+# ============================================================
+
 # Клонируем репозиторий
 print_info "Клонируем репозиторий с GitHub..."
 rm -rf "$TEMP_DIR"
@@ -87,7 +106,13 @@ print_info "Удаляем старую конфигурацию..."
 rm -rf /etc/nftables
 
 print_info "Копируем новую конфигурацию..."
-cp -r "$TEMP_DIR/nftables" /etc
+
+# Проверяем структуру репозитория
+if [ -d "$TEMP_DIR/nftables" ]; then
+    cp -r "$TEMP_DIR/nftables" /etc/
+else
+    cp -r "$TEMP_DIR" /etc/nftables
+fi
 
 # Удаляем временную папку
 rm -rf "$TEMP_DIR"
@@ -126,15 +151,29 @@ else
     exit 1
 fi
 
-# Применение
-print_info "Применяем правила..."
-nft -f /etc/nftables/main.conf
+# ============================================================
+# ПРИМЕНЕНИЕ ПРАВИЛ И НАСТРОЙКА АВТОЗАГРУЗКИ
+# ============================================================
 
-# Включаем автозагрузку
+print_info "Применяем правила..."
+
+# Создаём симлинк из основного файла, который ожидает systemd
+ln -sf /etc/nftables/main.conf /etc/nftables.conf
+print_success "Создан симлинк /etc/nftables.conf -> /etc/nftables/main.conf"
+
+# Применяем правила через основной системный файл
+nft -f /etc/nftables.conf
+
+# Включаем автозагрузку и перезапускаем сервис
 systemctl enable nftables
 systemctl restart nftables
 
-# Итог
+print_success "nftables добавлен в автозагрузку"
+
+# ============================================================
+# ВЫВОД ИТОГОВ
+# ============================================================
+
 echo ""
 echo "============================================================"
 print_success "УСТАНОВКА ЗАВЕРШЕНА!"
@@ -152,10 +191,16 @@ done
 echo ""
 echo -e "${GREEN}🔒 SSH (порт 22) всегда открыт${NC}"
 echo ""
+echo -e "${YELLOW}📁 Основной конфиг:${NC} /etc/nftables/main.conf"
+echo -e "${YELLOW}🔗 Симлинк:${NC} /etc/nftables.conf -> /etc/nftables/main.conf"
+if [ -f "$BACKUP_FILE" ]; then
+    echo -e "${YELLOW}💾 Бэкап:${NC} $BACKUP_FILE"
+fi
+echo ""
 echo "============================================================"
 echo -e "${BLUE}Полезные команды:${NC}"
 echo "  sudo nft list ruleset                      # просмотр правил"
-echo "  sudo nft -f /etc/nftables/main.conf        # применить изменения"
+echo "  sudo nft -f /etc/nftables.conf             # применить изменения"
 echo "  sudo systemctl status nftables             # статус сервиса"
 echo "============================================================"
 echo ""
