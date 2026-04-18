@@ -34,20 +34,15 @@ define block_ipv6 = {
     2a14:25c5::/32,
     2a14:25c6::/32,
     2a14:25c7::/32,
-
     # Yandex (https://yandex.ru/ips)
     2a02:6b8::/29,
-
     # TBank
     2a0b:66c0::/32,
-
     # Sberbank
     2a07:a600::/29,
     2a0b:b700::/29,
-
     # Ozon
     2001:67c:a5c::/48,
-
     # Wildberries
     ## AS57073
     2a03:720::/32,
