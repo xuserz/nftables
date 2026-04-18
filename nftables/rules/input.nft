@@ -5,7 +5,6 @@ set ssh_bruteforce {
   size 1000
 }
 
-
 chain input {
   type filter hook input priority 0; policy drop;
 
@@ -22,9 +21,7 @@ chain input {
   # SSH — ЗАЩИТА ОТ БРУТФОРСА
   # ====================================================
   # Логируем неудачные попытки
-  tcp dport 22 ct state new update @ssh_bruteforce {
-    ip saddr limit rate 3/minute
-  } log prefix "SSH_ACCEPT: " accept
+  tcp dport 22 ct state new update @ssh_bruteforce { ip saddr limit rate 3/minute } log prefix "SSH_ACCEPT: " accept
 
   # Блокируем превысивших лимит и логируем
   tcp dport 22 ct state new log prefix "SSH_BLOCKED: " drop
